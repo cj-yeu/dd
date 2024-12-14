@@ -29,6 +29,7 @@ public:
     string packageType;
     bool isMember;           // Indicates if the user is a member
     string pastEvents[MAX_EVENTS];
+    string pastEventPackages[MAX_EVENTS];
     int pastEventCount;
     string interactions[MAX_INTERACTIONS];
     int interactionCount;
@@ -39,9 +40,18 @@ public:
     }
 
     // Record any event the user has registered for, including the event name and date.
-    void addEvent(const string& eventName) {
+    void addEvent(const string& eventName, const string& packageType) {
         if (pastEventCount < MAX_EVENTS) {
-            pastEvents[pastEventCount++] = eventName;
+            pastEvents[pastEventCount] = eventName;
+            pastEventPackages[pastEventCount] = packageType;
+            pastEventCount++;
+        }
+    }
+
+    // Update the event date for a specific event
+    void updateEventDate(int eventIndex, const string& newDate) {
+        if (eventIndex >= 0 && eventIndex < pastEventCount) {
+            pastEvents[eventIndex] = "Event on " + newDate;
         }
     }
 
@@ -52,8 +62,6 @@ public:
         }
     }
 
- 
-
     void displayProfile() const {
         cout << "\n-------- Customer Profile --------\n";
         cout << "Name: " << name << "\n";
@@ -61,11 +69,14 @@ public:
         cout << "Loyalty Points: " << loyaltyPoints << "\n";
         cout << "Past Events:\n";
         for (int i = 0; i < pastEventCount; ++i) {
-            cout << " - " << pastEvents[i] << "\n";
+            cout << " - " << pastEvents[i] << " (" << pastEventPackages[i] << ")\n";
         }
         cout << "----------------------------------\n";
     }
 };
+
+
+
 
 class Event {
 private:
@@ -73,7 +84,7 @@ private:
     map<string, double> membershipDiscounts;
     map<string, string> packageThemes;
     map<string, bool> bookedDates; // Map to store booked dates
-   
+
     // Add these data members for report generation
     static const int MAX_REGISTRATIONS = 100;
     struct Registration {
@@ -107,7 +118,7 @@ public:
 
     double package(User& user);
 
-    
+
 
     void membership(User& user) {
         cout << "\n-------- Membership Details --------\n";
@@ -129,48 +140,102 @@ public:
 
     double advertisement(const User& user, const string& babyName, const string& time, const string& location);
 
-    void manageLogistics(User& user) {
-        cout << "\nManaging logistics for event on " << user.eventDate << "...\n";
+    void manageDate(User& user) {
+        int eventNumber = 1;
+        const int MAX_BOOKED_EVENTS = 100;
+        string eventDates[MAX_BOOKED_EVENTS]; // Array to store event dates
+        string eventPackages[MAX_BOOKED_EVENTS]; // Array to store event packages
+        int eventCount = 0;
 
-        // Check if the date is already booked
-        if (bookedDates[user.eventDate]) {
-            cout << "Error: The venue is already booked on " << user.eventDate << ".\n";
-            // Provide options to reschedule or cancel
+        // Display all booked events with numbers
+        cout << endl;
+        cout << "Booked Events:\n";
+        cout << "------------------------------------------------------\n";
+        cout << "|" << left << setw(5) << "No." << left << setw(23) << "Event Date" << "|" << setw(23) << "Package Name" << "|\n";
+        cout << "------------------------------------------------------\n";
+        for (int i = 0; i < user.pastEventCount; ++i) {
+            cout << "|" << left << setw(5) << eventNumber << left << setw(23) << user.pastEvents[i] << "|" << setw(23) << user.pastEventPackages[i] << "|\n";
+            eventDates[eventCount] = user.pastEvents[i];
+            eventPackages[eventCount] = user.pastEventPackages[i];
+            eventCount++;
+            eventNumber++;
         }
-        else {
-            // Book the date
-            bookedDates[user.eventDate] = true;
-            cout << "Venue booked successfully for " << user.eventDate << ".\n";
+        cout << "-------------------------------------------------------\n";
+
+        // Check if there are no booked events
+        if (eventCount == 0) {
+            cout << "No events are currently booked.\n";
+            return;
         }
 
-        // Create event schedule
-        const int MAX_SCHEDULE_ITEMS = 10;
-        EventSchedule schedule[MAX_SCHEDULE_ITEMS];
-        int scheduleCount = 0;
+        while (true) {
+            // Ask if the staff wants to modify an event
+            cout << "Do you want to modify an event? (Y/N): ";
+            char modifyEvent;
+            cin >> modifyEvent;
+            cin.ignore();
 
-        // Add schedule items
-        schedule[scheduleCount++] = { "10:00 AM", "Venue Setup", "Alice" };
-        schedule[scheduleCount++] = { "12:00 PM", "Decoration", "Bob" };
-        schedule[scheduleCount++] = { "02:00 PM", "Guest Arrival", "Event Team" };
-        // Add more activities as needed
+            if (modifyEvent != 'Y' && modifyEvent != 'y') {
+                cout << "No modifications made.\n";
+                break;
+            }
 
-        // Display event schedule
-        cout << "\nEvent Schedule:\n";
-        cout << "----------------------------------------\n";
-        cout << setw(10) << "Time" << setw(20) << "Activity" << setw(20) << "Responsible\n";
-        cout << "----------------------------------------\n";
-        for (int i = 0; i < scheduleCount; ++i) {
-            cout << setw(10) << schedule[i].time
-                << setw(20) << schedule[i].activity
-                << setw(20) << schedule[i].responsiblePerson << "\n";
+            // Prompt staff to choose an event to modify
+            cout << "Enter the number of the event you want to modify: ";
+            int chosenEvent;
+            cin >> chosenEvent;
+            cin.ignore();
+
+            // Check if the chosen event number is valid
+            if (chosenEvent < 1 || chosenEvent > eventCount) {
+                cout << "Error: Invalid event number.\n";
+                return;
+            }
+
+            string eventDate = eventDates[chosenEvent - 1];
+
+            // Prompt for new date
+            cout << "Enter the new date for the event (e.g., 2023-12-31): ";
+            string newDate;
+            getline(cin, newDate);
+
+            // Check if the new date is already booked
+            if (bookedDates.find(newDate) != bookedDates.end() && bookedDates[newDate]) {
+                cout << "Error: The new date is already booked. Please try again.\n";
+                return;
+            }
+
+            // Update the booking
+            bookedDates[eventDate] = false;
+            bookedDates[newDate] = true;
+            user.updateEventDate(chosenEvent - 1, newDate); // Update the event date
+            cout << "Event date updated successfully to " << newDate << ".\n";
+
+            // Ask if the staff wants to modify another event
+            cout << "Do you want to modify another event? (Y/N): ";
+            char modifyAnotherEvent;
+            cin >> modifyAnotherEvent;
+            cin.ignore();
+
+            if (modifyAnotherEvent != 'Y' && modifyAnotherEvent != 'y') {
+                break;
+            }
         }
-        cout << "----------------------------------------\n";
+
+        // Display the latest event details
+        cout << "\nLatest Event Details:\n";
+        cout << "------------------------------------------------------\n";
+        cout << "|" << left << setw(5) << "No." << left << setw(23) << "Event Date" << "|" << setw(23) << "Package Name" << "|\n";
+        cout << "------------------------------------------------------\n";
+        for (int i = 0; i < user.pastEventCount; ++i) {
+            cout << "|" << left << setw(5) << i + 1 << left << setw(23) << user.pastEvents[i] << "|" << setw(23) << user.pastEventPackages[i] << "|\n";
+        }
+        cout << "-------------------------------------------------------\n";
     }
-    
 
-    
+
     void Payment(User& currentUser, const double packagePrices[], int packageCount, const double advertisementPrices[], int advertisementCount);
-    
+
     void generateReport();
 
 };
@@ -192,20 +257,21 @@ Event::Event(int maxGuests) : maxGuests(maxGuests), registrationCount(0) {
 
 void Event::registration(User& user, double packagePrices[], int& packageCount, double advertisementPrices[], int& advertisementCount) {
     cout << "------------------- Event Registration -------------------\n";
+	//use date from user input in login()
     cout << "Registered Name: " << user.name << "\n";
     cout << "Registered Email: " << user.email << "\n";
     cout << "Registered Contact: " << user.contact << "\n";
     cout << "Enter the event date (e.g., 2023-12-31): ";
     getline(cin, user.eventDate);
 
-    user.addEvent("Event on " + user.eventDate); // Add the event with the date to the user's past events
+    // Check if the date is already booked
+    if (bookedDates[user.eventDate]) {
+        cout << "Error: The date is already booked. Please choose another date.\n";
+        return;
+    }
 
-    // Increment loyalty points for each event registration
-    user.loyaltyPoints += 10;
-
-    cout << "\nRegistration successful!\n";
-    sendConfirmation(user);
-    cout << endl;
+    // Book the date
+    bookedDates[user.eventDate] = true;
 
     // Proceed to package selection
     double packagePrice = package(user);
@@ -215,18 +281,27 @@ void Event::registration(User& user, double packagePrices[], int& packageCount, 
         return;
     }
 
+    // Add the event with the date and package type to the user's past events
+    user.addEvent("Event on " + user.eventDate, user.packageType);
+
+    // Increment loyalty points for each event registration
+    user.loyaltyPoints += 10;
+
+    cout << "\nRegistration successful!\n";
+    sendConfirmation(user);
+    cout << endl;
+
     // Add package price to the array
     packagePrices[packageCount++] = packagePrice;
 
     // Proceed to advertisement
     double advertisementPrice = 0.0;
-    int advertisementChoice;
-    cout << "Do you want to advertise your event (RM200)?\n";
-    cout << "Press 1 for Yes and 2 for No: ";
+    char advertisementChoice;
+    cout << "Do you want to advertise your event --> RM200? (Y/N): ";
     cin >> advertisementChoice;
     cin.ignore();
 
-    if (advertisementChoice == 1) {
+    if (advertisementChoice == 'Y' || advertisementChoice == 'y') {
         string babyName, time, location;
         cout << "Enter baby name: ";
         getline(cin, babyName);
@@ -237,7 +312,7 @@ void Event::registration(User& user, double packagePrices[], int& packageCount, 
 
         advertisementPrice = advertisement(user, babyName, time, location);
     }
-    else {
+    else if (advertisementChoice == 'N' || advertisementChoice == 'n') {
         cout << "Advertisement not selected.\n";
     }
 
@@ -268,11 +343,14 @@ void Event::registration(User& user, double packagePrices[], int& packageCount, 
     if (addAnother == 'Y' || addAnother == 'y') {
         registration(user, packagePrices, packageCount, advertisementPrices, advertisementCount);
     }
-    else {
+    else if (addAnother == 'N' || addAnother == 'n') {
         cout << "Proceeding to payment...\n";
         Payment(user, packagePrices, packageCount, advertisementPrices, advertisementCount);
     }
 }
+
+
+
 
 
 double Event::package(User& user) {
@@ -376,17 +454,19 @@ double Event::package(User& user) {
     user.packageType = packageType;
     user.numGuests = numGuests;
 
-    string addonType, addonChoice;
+    string addonType;
+    char addonChoice;
     int addonChosen;
     double addonPrice = 0.0;
     bool validInput = false;
 
     while (!validInput) {
         cout << endl;
-        cout << "Do you want to add on? (Yes/No): ";
+        cout << "Do you want to add on? (Y/N): ";
         cin >> addonChoice;
+        cin.ignore();
 
-        if (addonChoice == "Yes" || addonChoice == "YES" || addonChoice == "yes") {
+        if (addonChoice == 'Y' || addonChoice == 'y') {
             validInput = true;
             cout << "Add on Option: \n";
             cout << "1. Photographer - RM300\n";
@@ -419,13 +499,13 @@ double Event::package(User& user) {
                 validInput = false;
             }
         }
-        else if (addonChoice == "No" || addonChoice == "NO" || addonChoice == "no") {
+        else if (addonChoice == 'N' || addonChoice == 'n') {
             validInput = true;
             addonType = "";
             addonPrice = 0;
         }
         else {
-            cout << "Invalid input. Please enter 'Yes' or 'No'.\n";
+            cout << "Invalid input. Please enter 'Y' or 'N'.\n";
         }
     }
 
@@ -439,6 +519,7 @@ double Event::package(User& user) {
 
     return price;
 }
+
 
 double Event::advertisement(const User& user, const string& babyName, const string& time, const string& location) {
     // Retrieve the theme based on the package
@@ -514,7 +595,7 @@ void Event::Payment(User& currentUser, const double packagePrices[], int package
     cout << "-------------------------------------------------------------------------\n";
     for (int i = 0; i < currentUser.pastEventCount; ++i) {
         if (packagePrices[i] > 0.0) {
-            cout << "|" << left << setw(23) << currentUser.pastEvents[i] << "|" << setw(23) << currentUser.packageType << "|" << setw(23) << fixed << setprecision(2) << packagePrices[i] << "|" << "\n";
+            cout << "|" << left << setw(23) << currentUser.pastEvents[i] << "|" << setw(23) << currentUser.pastEventPackages[i] << "|" << setw(23) << fixed << setprecision(2) << packagePrices[i] << "|" << "\n";
             cout << "-------------------------------------------------------------------------\n";
         }
     }
@@ -534,8 +615,8 @@ void Event::Payment(User& currentUser, const double packagePrices[], int package
     cout << endl;
     cout << "----------------------------------------\n";
     cout << "|" << "Membership Status\t: " << (currentUser.isMember ? "Member" : "Non-Member") << "\t|\n";
-    cout << "|" << "Membership Level\t: " << level << "\t|\n";
-    cout << "|" << "Discount Rate\t\t: " << membershipDiscount * 100 << "%" << "\t\t|\n";
+    cout << "|" << "Membership Level\t: " << level << "\t\t|\n";
+    cout << "|" << "Discount Rate\t\t: " << membershipDiscount * 100 << "%" << "\t|\n";
     cout << "----------------------------------------\n";
 
     // Apply membership discount
@@ -544,10 +625,11 @@ void Event::Payment(User& currentUser, const double packagePrices[], int package
     cout << endl;
     cout << "Total amount to pay after membership discount: RM" << fixed << setprecision(2) << amount << "\n";
 
-    cout << "Do you have a discount coupon? (yes/no): ";
-    string couponResponse;
-    getline(cin, couponResponse);
-    if (couponResponse == "yes") {
+    cout << "Do you have a discount coupon? (Y/N): ";
+    char couponResponse;
+    cin >> couponResponse;
+    cin.ignore();
+    if (couponResponse == 'Y' || couponResponse == 'y') {
         cout << "Enter coupon code: ";
         getline(cin, couponCode);
         // Validate coupon code (for simplicity, assume "DISCOUNT10" gives a 10% discount)
@@ -638,7 +720,7 @@ void Event::Payment(User& currentUser, const double packagePrices[], int package
     cout << left << setw(30) << "Advertisement" << setw(20) << fixed << setprecision(2) << totalAdvertisementPrice << "\n";
     cout << "----------------------------------------\n";
     cout << left << setw(30) << "Subtotal" << setw(20) << fixed << setprecision(2) << subtotal << "\n";
-    cout << left << setw(30) << "Member Discount (" << membershipDiscount * 100 << "%)" << setw(20) << fixed << setprecision(2) << subtotal * membershipDiscount << "\n";
+    cout << left << setw(30) << "Member Discount" << setw(20) << fixed << setprecision(2) << subtotal * membershipDiscount << "\n";
     cout << "----------------------------------------\n";
     cout << left << setw(30) << "Total" << setw(20) << fixed << setprecision(2) << amount << "\n";
     cout << "----------------------------------------\n";
@@ -711,8 +793,7 @@ void Event::generateReport() {
 
 
 void login(User& user, bool& isStaff) {
-    int userType;
-    string username, password;
+    string userType, username, password;
 
     cout << "Login as:\n";
     cout << "1. Staff\n";
@@ -721,7 +802,7 @@ void login(User& user, bool& isStaff) {
     cin >> userType;
     cin.ignore();
 
-    if (userType == 1) {
+    if (userType == "1") {
         isStaff = true;
         // Simulate staff login
         cout << "\nEnter staff username: ";
@@ -730,7 +811,7 @@ void login(User& user, bool& isStaff) {
         getline(cin, password);
         cout << "Staff login successful.\n";
     }
-    else if (userType == 2) {
+    else if (userType == "2") {
         isStaff = false;
         cout << "\nEnter your name: ";
         getline(cin, user.name);
@@ -740,20 +821,21 @@ void login(User& user, bool& isStaff) {
         getline(cin, user.contact);
         cout << "Login successful.\n";
 
-        string memberResponse, registerMember;
-        cout << "\nAre you a member? (yes/no): ";
+        char memberResponse, registerMember;
+        cout << "\nAre you a member? (Y/N): ";
         cin >> memberResponse;
-        user.isMember = (memberResponse == "yes" || memberResponse == "YES" || memberResponse == "Yes");
+        user.isMember = (memberResponse == 'Y' || memberResponse == 'y');
         cin.ignore();
 
+		//if user is memebr then add 10 points
         if (user.isMember) {
             user.loyaltyPoints += 10; // Add loyalty points for the member
         }
         else {
-            cout << "You are not a member. Would you like to sign up for our membership program? (yes/no): ";
+            cout << "You are not a member. Would you like to sign up for our membership program? (Y/N): ";
             cin >> registerMember;
             cin.ignore();
-            if (registerMember == "yes" || registerMember == "YES" || registerMember == "Yes") {
+            if (registerMember == 'Y' || registerMember == 'y') {
                 user.loyaltyPoints += 10;
                 user.isMember = true;
             }
@@ -771,49 +853,62 @@ void login(User& user, bool& isStaff) {
 
 // Main function
 int main() {
-    int chosen;
-    cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
-    cout << "    ~~~~~~~~~~ WELCOME TO THE ~~~~~~~~~~~~" << endl;
-    cout << "                 ___      __    ___     __     __                   " << endl;
-    cout << "                \\  __  \\  .'  _ `.\\  ___  \\   \\   \\   /  /                  " << endl;
-    cout << "                | |    \\ | /   '  \\  \\ |    \\ |    \\  _. /  '                   " << endl;
-    cout << "                | |_/ / |_|  /  | |_/ /     ( ) .'                    " << endl;
-    cout << "                |   _ _ '.    .-`   |   _ _ '. _( o _)'                     " << endl;
-    cout << "                |  ( ' )  \\.'.   _    |  ( ' )  \\   |(,)'                      " << endl;
-    cout << "                | ({;}) ||  ( )  | ({;}) |   `-'  /                       " << endl;
-    cout << "                |  (,)  /\\ (_ o ) /  (,_)  /\\      /                        " << endl;
-    cout << "                /__.'  '.(,).'/__.'  `-..-'                         " << endl;
-    cout << "   .-'''-. .---.  .---.     ,-----.    .--.      .--.    .-''-.  .-------.     " << endl;
-    cout << "  / _     \\|   |  |_ |   .'  .-,  '.  |  |     |  |  .'_ _   \\ |  _ _   \\  " << endl;
-    cout << " (' )/--'|   |  ( ' )  / ,-.|  \\ _ \\ | ( )   |  | / ( ` )   '| ( ' )  | " << endl;
-    cout << " (_ o ).   |   '-({;});  \\  ' /  | :|(_ o )  |  |. ( o )  ||( o _) /  " << endl;
-    cout << " (,). '. |      (,) |  `,/ \\ _/  || (,) \\ |  ||  (,)_|| (,).' _" << endl;
-    cout << ".---.  \\  :| _ --.   | : (  '\\/ \\   ;|  |/    \\|  |'  \\   .---.|  |\\ \\  |  |" << endl;
-    cout << "\\    `-'  ||( ' ) |   |  \\ `\"/  \\  ) / |  '  /\\  `  | \\  `-'    /|  | \\ `'   /" << endl;
-    cout << " \\       / ({;})|   |   '. \\_/``\".'  |    /  \\    |  \\       / |  |  \\    /  " << endl;
-    cout << "  -...-'  '(_,_) '---'     '-----'    `---'    `---   `'-..-'  ''-'   `'-'   " << endl;
-    cout << "    ~~~~~~~~~~~ EVENT ! ~~~~~~~~~~~~" << endl;
-    cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
+    string chosen;
+    
+        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
+        cout << "    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ WELCOME TO THE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
+        cout << "                 _______      ____    _______     ____     __                   " << endl;
+        cout << "                \\  ____  \\  .'  __ `.\\  ____  \\   \\   \\   /  /                  " << endl;
+        cout << "                | |    \\ | /   '  \\  \\ |    \\ |    \\  _. /  '                   " << endl;
+        cout << "                | |____/ / |___|  /  | |____/ /     _( )_ .'                    " << endl;
+        cout << "                |   _ _ '.    _.-`   |   _ _ '. ___(_ o _)'                     " << endl;
+        cout << "                |  ( ' )  \\.'.   _    |  ( ' )  \\   |(_,_)'                      " << endl;
+        cout << "                | (_{;}_) ||  _( )_  | (_{;}_) |   `-'  /                       " << endl;
+        cout << "                |  (_,_)  /\\ (_ o _) /  (_,_)  /\\      /                        " << endl;
+        cout << "                /_______.'  '.(_,_).'/_______.'  `-..-'                         " << endl;
+        cout << "   .-'''-. .---.  .---.     ,-----.    .--.      .--.    .-''-.  .-------.     " << endl;
+        cout << "  / _     \\|   |  |_ _|   .'  .-,  '.  |  |_     |  |  .'_ _   \\ |  _ _   \\  " << endl;
+        cout << " (`' )/`--'|   |  ( ' )  / ,-.|  \\ _ \\ | _( )_   |  | / ( ` )   '| ( ' )  | " << endl;
+        cout << " (_ o _).   |   '-(_{;}_);  \\  '_ /  | :|(_ o _)  |  |. (_ o _)  ||(_ o _) /  " << endl;
+        cout << " (_,_). '. |      (_,_) |  _`,/ \\ _/  || (_,_) \\ |  ||  (_,_)___|| (_,_).' __" << endl;
+        cout << ".---.  \\  :| _ _--.   | : (  '\\_/ \\   ;|  |/    \\|  |'  \\   .---.|  |\\ \\  |  |" << endl;
+        cout << "\\    `-'  ||( ' ) |   |  \\ `\"/  \\  ) / |  '  /\\  `  | \\  `-'    /|  | \\ `'   /" << endl;
+        cout << " \\       / (_{;}_)|   |   '. \\_/``\".'  |    /  \\    |  \\       / |  |  \\    /  " << endl;
+        cout << "  `-...-'  '(_,_) '---'     '-----'    `---'    `---`   `'-..-'  ''-'   `'-'   " << endl;
+        cout << "    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ EVENT ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
+        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
 
-    cout << endl;
-    cout << "Press 1 to continue or Press 2 to exit: ";
-    cin >> chosen;
-    cin.ignore();
+        cout << endl;
+        cout << "Press 1 to continue or Press 2 to exit: ";
+        cin >> chosen;
+        cin.ignore();
 
-    if (chosen == 1) {
-        // Continue to login
-    }
-    else if (chosen == 2) {
-        cout << "Goodbye!\n";
-        return 0;
-    }
-    else {
-        cout << "Invalid input. Please try again.\n";
-        return 0;
-    }
+            
+        if (chosen == "1") {
+            // Continue to login
+        }
+        else if (chosen == "2") {
+            cout << "Goodbye!\n";
+            return 0;
+        }
+        else {
+            do {
+                cout << "Invalid input. Please try again.\n";
+                cout << "Press 1 to continue or Press 2 to exit: ";
+                cin >> chosen;
+                cin.ignore();
+            } while (chosen != "1" && chosen != "2");
+        }
 
+            
+        
+        
+		
+    
+    //class | object {bring data from login()}, call function
     User user;
     bool isStaff = false;
+    //call the member functions of the Event class
     Event event;
     int choice;
     double packagePrices[MAX_PACKAGES] = { 0 };
@@ -821,6 +916,7 @@ int main() {
     int packageCount = 0;
     int advertisementCount = 0;
 
+    //When user chooses to exit or back to main menu, the loop will break and the program terminates.
     while (true) {
         login(user, isStaff);
 
@@ -831,7 +927,7 @@ int main() {
                 cout << "--------------------------------------" << endl;
                 cout << "\t\tStaff Menu\t\t" << endl;
                 cout << "--------------------------------------" << endl;
-                cout << "1. Event Booking on Dates & Logistics\n"
+                cout << "1. Event Booking on Dates\n"
                     << "2. Event Reporting\n"
                     << "3. Back to Main Menu\n"
                     << "4. Exit\n";
@@ -842,7 +938,7 @@ int main() {
 
                 switch (choice) {
                 case 1:
-                    event.manageLogistics(user);
+                    event.manageDate(user);
                     break;
                 case 2:
                     event.generateReport();
@@ -866,10 +962,9 @@ int main() {
                 cout << "\t\tCustomer Menu\t\t" << endl;
                 cout << "--------------------------------------" << endl;
                 cout << "1. Event Registration\n"
-                    << "2. Advertisement\n"
-                    << "3. CRM/Membership\n"
-                    << "4. Back to Main Menu\n"
-                    << "5. Exit\n"; 
+                    << "2. CRM/Membership\n"
+                    << "3. Back to Main Menu\n"
+                    << "4. Exit\n";
                 cout << "--------------------------------------" << endl;
                 cout << "Enter your choice: ";
                 cin >> choice;
@@ -881,18 +976,6 @@ int main() {
                     break;
 
                 case 2: {
-                    string babyName, time, location;
-                    cout << "Enter baby name: ";
-                    getline(cin, babyName);
-                    cout << "Enter time: ";
-                    getline(cin, time);
-                    cout << "Enter location: ";
-                    getline(cin, location);
-                    advertisementPrices[advertisementCount++] = event.advertisement(user, babyName, time, location);
-                    break;
-                }
-
-                case 3: {
                     int crmChoice;
 
                     do {
@@ -920,46 +1003,20 @@ int main() {
                     } while (crmChoice != 3);
                     break;
                 }
-                case 4:
+                case 3:
                     break; // Break out of the customer menu loop to re-login
-                case 5:
+                case 4:
                     cout << "Exiting...\n";
                     return 0;
                 default:
                     cout << "Invalid choice. Please try again.\n";
                 }
 
-            } while (choice != 4);
+            } while (choice != 3 && choice != 4);
         }
     }
 
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
